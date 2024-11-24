@@ -1,9 +1,10 @@
+# RIP Data Generator: This script generates simulated Respiratory Inductive Plethysmography (RIP) data and saves it in a C++ array format.
 import numpy as np
 
 # Constants
 RIP_SAMPLING_RATE = 500  # Hz
 RIP_DATA_POINTS = 5000
-FREQUENCY = 0.3  # Frequency of the respiratory signal (in Hz, typical for respiration rate) Corresponds to 18 Breaths per minute
+FREQUENCY = 0.37  # Frequency of the respiratory signal (in Hz, typical for respiration rate) Corresponds to 18 Breaths per minute
 AMPLITUDE = 1000  # Amplitude of the RIP signal (in arbitrary units)
 
 # Generate simulated time values (in seconds)
