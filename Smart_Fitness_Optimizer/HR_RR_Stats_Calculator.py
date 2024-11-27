@@ -4,7 +4,7 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision, WriteOptions
 from datetime import datetime
 
 # InfluxDB configuration (updated with provided credentials)
-INFLUXDB_URL = "http://192.168.0.158:8080"
+INFLUXDB_URL = "http://192.168.0.107:8080"
 INFLUXDB_TOKEN = "JzaBbK_HXy5RaTBWFE7fF7NpnCvGYfMQFYfP_Guw8H-yhSyWlfecZfiqyfXjJIWRd8HaBFyM7S_Z76LiRYBQzw=="
 INFLUXDB_ORG = "cf38919dce75ecce"
 INFLUXDB_BUCKET = "FitnessOptimizer"
@@ -43,6 +43,24 @@ def calculate_exercise_intensity(hr, resting_hr, max_hr):
     intensity = ((hr - resting_hr) / (max_hr - resting_hr)) * 100 
     return max(0, min(intensity, 100))  # Clamp intensity between 0 and 100%
 
+# Classification function
+def classify_data(hr, rr):
+    if hr > 110.0 and rr > 20.0:
+        return "High HR, High RR: Possible cause - intense physical activity."
+    elif hr < 60.0 and rr > 20.0:
+        return "Low HR, High RR: Possible cause - respiratory distress or stress."
+    elif 60.0 <= hr <= 100.0 and rr > 20.0:
+        return "Normal HR, High RR: Possible cause - fever or infection."
+    elif hr > 100.0 and rr < 12.0:
+        return "High HR, Low RR: Possible cause - dehydration or stress."
+    elif hr < 60.0 and rr < 12.0:
+        return "Low HR, Low RR: Possible cause - hypothermia or metabolic issues."
+    elif 60.0 <= hr <= 100.0 and rr < 12.0:
+        return "Normal HR, Low RR: Possible cause - deep sleep or relaxation."
+    elif 60.0 <= hr <= 100.0 and 12.0 <= rr <= 20.0:
+        return "Normal HR, Normal RR: Possible cause - healthy state."
+    else:
+        return "Unclassified: Consider further analysis."
 # Connect to InfluxDB
 client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
 write_api = client.write_api(write_options=WriteOptions(batch_size=500, flush_interval=100))
@@ -129,7 +147,13 @@ def write_avg_stdev_rr_to_influxdb(avg_rr, stdev_rr):
         .field("standard_deviation", float(stdev_rr)) \
         .time(datetime.utcnow(), WritePrecision.NS)
     write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
-
+# Write classification back to InfluxDB
+def write_classification_to_influxdb(classification):
+    print(f"DEBUG: Writing classification: {classification}")
+    point = Point("Classification") \
+        .field("classification", classification) \
+        .time(datetime.utcnow(), WritePrecision.NS)
+    write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
 # Main function
 def main():
     PPG_SAMPLING_RATE = 500
@@ -174,6 +198,8 @@ def main():
                 write_avg_stdev_rr_to_influxdb(avg_rr, stdev_rr)
             else:
                 rr_data.append(rr)
+            classification = classify_data(hr, rr)
+            write_classification_to_influxdb(classification)
         time.sleep(2)
 
 if __name__ == "__main__":
